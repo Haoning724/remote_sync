@@ -4,11 +4,13 @@ import fnmatch
 import threading
 import time
 import stat
+import types
 from contextlib import contextmanager
 
 import paramiko
 from inotify_simple import INotify, flags
 
+# Default file extensions to include when 'source_code_only' is true
 SOURCE_CODE_EXTENSIONS = [
     '.py', '.js', '.html', '.css', '.scss', '.java', '.c', '.cpp', '.h',
     '.hpp', '.go', '.rs', '.php', '.rb', '.ts', '.tsx', '.jsx', '.json',
@@ -34,6 +36,7 @@ def is_excluded(path, exclude_patterns, source_code_only=False):
 
 @contextmanager
 def sftp_client(config):
+    """A context manager for establishing and closing an SFTP connection."""
     ssh_client = None
     sftp = None
     try:
@@ -307,6 +310,7 @@ def sync_worker(config):
 
 
 def main():
+    """Loads configurations and starts a sync worker thread for each."""
     try:
         with open('config.json', 'r') as f:
             configs = json.load(f)
@@ -316,13 +320,16 @@ def main():
     except json.JSONDecodeError:
         print("Error: Could not decode config.json. Please check its format.")
         return
+
     threads = []
     for config in configs:
         if config.get('enabled', False):
             thread = threading.Thread(target=sync_worker, args=(config,))
             threads.append(thread)
             thread.start()
+
     print(f"Started {len(threads)} sync tasks.")
+
     try:
         for thread in threads:
             thread.join()

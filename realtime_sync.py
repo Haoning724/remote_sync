@@ -48,6 +48,26 @@ def sftp_client(config):
             timeout=15
         )
         sftp = ssh_client.open_sftp()
+
+        if config.get('permissive', False):
+            # put
+            sftp._original_put = sftp.put
+
+            def put_with_permission(self, local_path, remote_path):
+                self._original_put(local_path, remote_path)
+                self.chmod(remote_path, 0o777)
+
+            sftp.put = types.MethodType(put_with_permission, sftp)
+
+            # mkdir
+            sftp._original_mkdir = sftp.mkdir
+
+            def mkdir_with_permission(self, remote_path):
+                self._original_mkdir(remote_path)
+                self.chmod(remote_path, 0o777)
+
+            sftp.mkdir = types.MethodType(mkdir_with_permission, sftp)
+
         print(f"[{config['name']}] SFTP connection established.")
         yield sftp
     except Exception as e:

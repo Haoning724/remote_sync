@@ -99,7 +99,7 @@ def walk_remote(sftp, remote_path, exclude_patterns, source_code_only):
                 is_dir = stat.S_ISDIR(attr.st_mode)
 
                 exclude_check_path = rel_item_path + '/' if is_dir else rel_item_path
-                if is_excluded(exclude_check_path, exclude_patterns, source_code_only):
+                if is_excluded(exclude_check_path, exclude_patterns, source_code_only and (not is_dir)):
                     continue
 
                 remote_map[rel_item_path] = attr
@@ -128,8 +128,8 @@ def perform_initial_sync(sftp, config):
     for root, dirs, files in os.walk(local_base, topdown=True):
         # Filter directories in-place using the exclude patterns
         dirs[:] = [d for d in dirs if
-                   not is_excluded(os.path.join(os.path.relpath(root, local_base), d, ''), exclude_patterns,
-                                   source_code_only)]
+                   not is_excluded(os.path.relpath(os.path.join(root, d), local_base) + os.sep, exclude_patterns,
+                                   False)]
 
         for name in dirs:
             full_path = os.path.join(root, name)
@@ -232,7 +232,7 @@ def sync_worker(config):
         rel_path_from_base = os.path.relpath(path, config['local_path'])
         if rel_path_from_base == '.': rel_path_from_base = ''
         if is_excluded(rel_path_from_base + '/', config.get('exclude_patterns', []),
-                       config.get('source_code_only', False)):
+                       (not os.path.isdir(path)) and config.get('source_code_only', False)):
             return
         try:
             wd = inotify.add_watch(path, watch_flags)
